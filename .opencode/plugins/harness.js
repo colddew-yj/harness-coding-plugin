@@ -24,6 +24,24 @@ const AGENTS_DIR = path.join(HARNESS_DIR, 'agents');
 const SKILLS_DIR = path.join(HARNESS_DIR, 'skills');
 const MEMORY_DIR = path.join(HARNESS_DIR, 'memory');
 const RULES_DIR = path.join(HARNESS_DIR, 'rules');
+const OBSIDIAN_TEMPLATE_DIR = path.join(HARNESS_DIR, 'obsidian-template');
+
+// Obsidian Vault 检测
+const detectObsidianVault = () => {
+  const candidates = [
+    path.join(homeDir, 'Documents/Obsidian Vault'),
+    path.join(homeDir, 'Obsidian'),
+    path.join(homeDir, 'Desktop/Obsidian Vault'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c) && fs.existsSync(path.join(c, '.obsidian'))) {
+      return c;
+    }
+  }
+  return null;
+};
+
+const OBSIDIAN_VAULT = detectObsidianVault();
 
 // 确保目录存在
 const ensureDirs = () => {
@@ -259,7 +277,174 @@ ${memories.map(m => `- [${m.context}] ${m.content}`).join('\n')}
           const result = await memory.reflect(input.prompt || 'What patterns emerge?');
           return result ? JSON.stringify(result, null, 2) : 'Reflection not available (requires Hindsight service)';
         }
+      },
+      'harness-requirement': {
+        description: 'Create or manage requirements in Obsidian vault. Input: project name + requirement content or document path.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', description: 'Action: create, query, update', enum: ['create', 'query', 'update'] },
+            project: { type: 'string', description: 'Project name' },
+            content: { type: 'string', description: 'Requirement content (text)' },
+            docPath: { type: 'string', description: 'Path to requirement document file' },
+            type: { type: 'string', description: 'Document type: requirement, plan, bug', enum: ['requirement', 'plan', 'bug'] },
+            title: { type: 'string', description: 'Title for the document' }
+          },
+          required: ['action', 'project']
+        },
+        execute: async (input) => {
+          if (!OBSIDIAN_VAULT) {
+            return 'Obsidian vault not found. Requirement management disabled. Other harness features continue to work normally.';
+          }
+
+          const { action, project, content, docPath, type = 'requirement', title } = input;
+          const projectDir = path.join(OBSIDIAN_VAULT, project);
+          const reqDir = path.join(projectDir, '01-Requirements');
+          const planDir = path.join(projectDir, '02-Plans');
+          const bugDir = path.join(projectDir, '03-Bugs');
+          const statusDir = path.join(projectDir, '04-Status');
+          const statusFile = path.join(statusDir, 'STATUS.md');
+
+          // Create directories
+          [reqDir, planDir, bugDir, statusDir].forEach(d => {
+            if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+          });
+
+          if (action === 'query') {
+            // Read current status
+            if (fs.existsSync(statusFile)) {
+              return fs.readFileSync(statusFile, 'utf-8');
+            }
+            return `No status found for project: ${project}`;
+          }
+
+          if (action === 'create') {
+            let reqContent = content || '';
+            let reqTitle = title || 'New Requirement';
+
+            // Read from document if path provided
+            if (docPath && fs.existsSync(docPath)) {
+              reqContent = fs.readFileSync(docPath, 'utf-8');
+              reqTitle = path.basename(docPath, path.extname(docPath));
+            }
+
+            if (!reqContent) {
+              return 'Error: No content provided. Use "content" for text or "docPath" for file path.';
+            }
+
+            // Generate ID
+            const existingReqs = fs.existsSync(reqDir) ? fs.readdirSync(reqDir).filter(f => f.startsWith('REQ-')) : [];
+            const nextNum = existingReqs.length + 1;
+            const reqId = `REQ-${String(nextNum).padStart(3, '0')}`;
+            const planId = `PLAN-${String(nextNum).padStart(3, '0')}`;
+            const date = new Date().toISOString().split('T')[0];
+
+            // Create requirement file
+            const reqFileName = `${reqId}-${reqTitle.replace(/\s+/g, '-')}.md`;
+            const reqFile = path.join(reqDir, reqFileName);
+            const reqTemplate = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '01-Requirements/REQ-TEMPLATE.md'), 'utf-8');
+            const reqContent_rendered = reqTemplate
+              .replace(/{{ID}}/g, reqId)
+              .replace(/{{PROJECT}}/g, project)
+              .replace(/{{DATE}}/g, date)
+              .replace(/{{TITLE}}/g, reqTitle)
+              .replace(/{{DESCRIPTION}}/g, reqContent);
+            fs.writeFileSync(reqFile, reqContent_rendered);
+
+            // Create plan file
+            const planFileName = `${planId}-${reqTitle.replace(/\s+/g, '-')}.md`;
+            const planFile = path.join(planDir, planFileName);
+            const planTemplate = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '02-Plans/PLAN-TEMPLATE.md'), 'utf-8');
+            const planContent_rendered = planTemplate
+              .replace(/{{ID}}/g, planId)
+              .replace(/{{PROJECT}}/g, project)
+              .replace(/{{REQ_ID}}/g, reqId)
+              .replace(/{{TITLE}}/g, `Implementation: ${reqTitle}`);
+            fs.writeFileSync(planFile, planContent_rendered);
+
+            // Update status
+            updateStatus(projectDir, project, statusFile);
+
+            return `✅ Requirement created in Obsidian:
+- Project: ${project}
+- Requirement: ${reqId} - ${reqTitle}
+- Plan: ${planId}
+- Location: ${projectDir}
+
+Files created:
+- ${reqFile}
+- ${planFile}
+- ${statusFile} (updated)`;
+          }
+
+          return `Unknown action: ${action}. Use "create" or "query".`;
+        }
       }
     }
   };
 };
+
+// Update STATUS.md
+function updateStatus(projectDir, project, statusFile) {
+  const reqDir = path.join(projectDir, '01-Requirements');
+  const planDir = path.join(projectDir, '02-Plans');
+  const bugDir = path.join(projectDir, '03-Bugs');
+  const date = new Date().toISOString().split('T')[0];
+
+  // Read requirements
+  const reqs = fs.existsSync(reqDir) ? fs.readdirSync(reqDir).filter(f => f.endsWith('.md')) : [];
+  const reqRows = reqs.map(f => {
+    const content = fs.readFileSync(path.join(reqDir, f), 'utf-8');
+    const idMatch = content.match(/^id:\s*(.+)$/m);
+    const statusMatch = content.match(/^status:\s*(.+)$/m);
+    const titleMatch = content.match(/^#\s*\S+:\s*(.+)$/m);
+    const id = idMatch ? idMatch[1].trim() : f;
+    const status = statusMatch ? statusMatch[1].trim() : 'pending';
+    const title = titleMatch ? titleMatch[1].trim() : f;
+    const icon = status === 'done' ? '✅' : status === 'in-progress' ? '🔄' : '⏳';
+    return `| ${id} | ${title} | ${icon} ${status} |`;
+  }).join('\n');
+
+  // Read plans
+  const plans = fs.existsSync(planDir) ? fs.readdirSync(planDir).filter(f => f.endsWith('.md')) : [];
+  const planRows = plans.map(f => {
+    const content = fs.readFileSync(path.join(planDir, f), 'utf-8');
+    const idMatch = content.match(/^id:\s*(.+)$/m);
+    const statusMatch = content.match(/^status:\s*(.+)$/m);
+    const requiresMatch = content.match(/^requires:\s*(.+)$/m);
+    const titleMatch = content.match(/^#\s*\S+:\s*(.+)$/m);
+    const id = idMatch ? idMatch[1].trim() : f;
+    const status = statusMatch ? statusMatch[1].trim() : 'pending';
+    const requires = requiresMatch ? requiresMatch[1].trim() : '-';
+    const title = titleMatch ? titleMatch[1].trim() : f;
+    const icon = status === 'done' ? '✅' : status === 'in-progress' ? '🔄' : '⏳';
+    return `| ${id} | ${title} | ${requires} | ${icon} ${status} |`;
+  }).join('\n');
+
+  // Read bugs
+  const bugs = fs.existsSync(bugDir) ? fs.readdirSync(bugDir).filter(f => f.endsWith('.md')) : [];
+  const bugRows = bugs.length > 0 ? bugs.map(f => {
+    const content = fs.readFileSync(path.join(bugDir, f), 'utf-8');
+    const idMatch = content.match(/^id:\s*(.+)$/m);
+    const statusMatch = content.match(/^status:\s*(.+)$/m);
+    const severityMatch = content.match(/^severity:\s*(.+)$/m);
+    const titleMatch = content.match(/^#\s*\S+:\s*(.+)$/m);
+    const id = idMatch ? idMatch[1].trim() : f;
+    const status = statusMatch ? statusMatch[1].trim() : 'open';
+    const severity = severityMatch ? severityMatch[1].trim() : 'medium';
+    const title = titleMatch ? titleMatch[1].trim() : f;
+    const icon = status === 'closed' ? '✅' : status === 'fixed' ? '🔧' : '🐛';
+    return `| ${id} | ${title} | ${severity} | ${icon} ${status} |`;
+  }).join('\n') : '| (无) | | | |';
+
+  // Generate status file
+  const statusTemplate = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '04-Status/STATUS-TEMPLATE.md'), 'utf-8');
+  const statusContent = statusTemplate
+    .replace(/{{PROJECT}}/g, project)
+    .replace(/{{DATE}}/g, date)
+    .replace(/{{REQUIREMENTS_TABLE}}/g, reqRows || '| (无) | | |')
+    .replace(/{{PLANS_TABLE}}/g, planRows || '| (无) | | | |')
+    .replace(/{{BUGS_TABLE}}/g, bugRows);
+
+  fs.writeFileSync(statusFile, statusContent);
+}
