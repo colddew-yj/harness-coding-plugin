@@ -38,10 +38,11 @@ For the best Spec Coding experience, combine with:
 
 - **[Karpathy Guidelines](https://github.com/karpathy)** — Verification-first, hallucination-avoidance principles
 - **[Superpowers](https://github.com/obra/superpowers)** — Workflows for brainstorming, TDD, subagent dispatch
+- **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — Visual code review graph for tracking dependencies and change impact
 
 Together they form a complete closed loop:
 ```
-Karpathy (verification principles) + Superpowers (workflows) + Harness (reliability guarantees) = Ideal Spec Coding
+Karpathy (verification principles) + Superpowers (workflows) + Harness (reliability) + code-review-graph (visual review) = Ideal Spec Coding
 ```
 
 ## Features

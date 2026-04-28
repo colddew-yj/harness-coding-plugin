@@ -38,10 +38,11 @@ Harness Engineering 插件 — 为 AI 编程工具提供确定性可靠性。
 
 - **[Karpathy Guidelines](https://github.com/karpathy)** — 强调验证优先、避免幻觉的编程原则
 - **[Superpowers](https://github.com/obra/superpowers)** — 提供 brainstorming、TDD、subagent dispatch 等工作流
+- **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — 可视化代码审查图谱，追踪依赖与变更影响
 
 三者配合形成完整闭环：
 ```
-Karpathy（验证原则） + Superpowers（工作流） + Harness（可靠性保障） = 理想的 Spec Coding 体验
+Karpathy（验证原则） + Superpowers（工作流） + Harness（可靠性保障） + code-review-graph（可视化审查） = 理想的 Spec Coding 体验
 ```
 
 ## 功能
