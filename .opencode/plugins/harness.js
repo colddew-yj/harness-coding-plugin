@@ -18,14 +18,6 @@ const homeDir = os.homedir();
 const HARNESS_DIR = path.resolve(__dirname, '../..');
 const MEMORY_DIR = path.join(HARNESS_DIR, 'memory');
 const RULES_DIR = path.join(HARNESS_DIR, 'rules');
-const OBSIDIAN_TEMPLATE_DIR = path.join(HARNESS_DIR, 'obsidian-template');
-
-// Obsidian Vault 检测（弱依赖）
-const OBSIDIAN_VAULT = [
-  path.join(homeDir, 'Documents/Obsidian Vault'),
-  path.join(homeDir, 'Obsidian'),
-  path.join(homeDir, 'Desktop/Obsidian Vault'),
-].find(c => fs.existsSync(c) && fs.existsSync(path.join(c, '.obsidian'))) || null;
 
 // 确保目录存在
 [MEMORY_DIR, RULES_DIR].forEach(dir => {
@@ -188,28 +180,6 @@ ${memories.map(m => `- [${m.context}] ${m.content}`).join('\n')}
       if (result?.error) {
         await memory.retain(`Tool ${toolCall.name} failed: ${result.error}`, 'anti-pattern');
       }
-      // 自动刷新 Obsidian STATUS.md（当 REQ/PLAN/BUG 文件被修改时）
-      if (OBSIDIAN_VAULT && (toolCall.name === 'edit' || toolCall.name === 'write')) {
-        const filePath = toolCall.input?.filePath || '';
-        const match = filePath.match(/01-Requirements|02-Plans|03-Bugs/);
-        if (match) {
-          const projectMatch = filePath.match(new RegExp(`${path.basename(OBSIDIAN_VAULT)}/([^/]+)/0[1-3]-`));
-          if (projectMatch) {
-            const project = projectMatch[1];
-            const projectDir = path.join(OBSIDIAN_VAULT, project);
-            const reqDir = path.join(projectDir, '01-Requirements');
-            const planDir = path.join(projectDir, '02-Plans');
-            const bugDir = path.join(projectDir, '03-Bugs');
-            const statusFile = path.join(projectDir, '04-Status', 'STATUS.md');
-            try {
-              _updateStatus(projectDir, project, statusFile, reqDir, planDir, bugDir);
-              console.log(`[Harness] STATUS.md auto-refreshed for ${project}`);
-            } catch (e) {
-              console.log(`[Harness] Failed to auto-refresh STATUS.md: ${e.message}`);
-            }
-          }
-        }
-      }
     },
 
     tool: {
@@ -217,97 +187,9 @@ ${memories.map(m => `- [${m.context}] ${m.content}`).join('\n')}
         description: 'Query harness memory for past experiences',
         parameters: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number', default: 5 } }, required: ['query'] },
         execute: async (input) => JSON.stringify(await memory.recall(input.query, input.limit || 5), null, 2)
-      },
-      'harness-requirement': {
-        description: '读取需求，生成 Obsidian 01-Requirements/02-Plans/04-Status 文档。用法: {content: "需求", project: "项目名"} 或 {docPath: "/path/to/req.md", project: "项目名"}',
-        parameters: { type: 'object', properties: { content: { type: 'string' }, project: { type: 'string' }, docPath: { type: 'string' } } },
-        execute: async (input) => {
-          if (!OBSIDIAN_VAULT) return 'Obsidian vault 未找到，需求管理已禁用。';
-          const { content, project, docPath } = input;
-          let reqContent = content || '';
-          let title = 'New Requirement';
-          if (docPath) {
-            if (!fs.existsSync(docPath)) return `文件不存在: ${docPath}`;
-            reqContent = fs.readFileSync(docPath, 'utf-8');
-            title = path.basename(docPath, path.extname(docPath));
-          }
-          if (!reqContent) return '错误: 未提供需求内容。';
-
-          const projectName = project || 'default';
-          const projectDir = path.join(OBSIDIAN_VAULT, projectName);
-          const reqDir = path.join(projectDir, '01-Requirements');
-          const planDir = path.join(projectDir, '02-Plans');
-          const bugDir = path.join(projectDir, '03-Bugs');
-          const statusDir = path.join(projectDir, '04-Status');
-          [reqDir, planDir, bugDir, statusDir].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
-
-          // 生成编号
-          const existingReqs = fs.readdirSync(reqDir).filter(f => f.startsWith('REQ-'));
-          const n = String(existingReqs.length + 1).padStart(3, '0');
-          const reqId = `REQ-${n}`, planId = `PLAN-${n}`, date = new Date().toISOString().split('T')[0];
-
-          // 01-Requirements
-          const reqFile = path.join(reqDir, `${reqId}-${title.replace(/\s+/g, '-')}.md`);
-          const reqTpl = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '01-Requirements/REQ-TEMPLATE.md'), 'utf-8');
-          fs.writeFileSync(reqFile, reqTpl.replace(/{{ID}}/g, reqId).replace(/{{PROJECT}}/g, projectName).replace(/{{DATE}}/g, date).replace(/{{TITLE}}/g, title).replace(/{{DESCRIPTION}}/g, reqContent));
-
-          // 02-Plans（空模板，待 writing-plans 填充）
-          const planFile = path.join(planDir, `${planId}-${title.replace(/\s+/g, '-')}.md`);
-          const planTpl = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '02-Plans/PLAN-TEMPLATE.md'), 'utf-8');
-          fs.writeFileSync(planFile, planTpl.replace(/{{ID}}/g, planId).replace(/{{PROJECT}}/g, projectName).replace(/{{REQ_ID}}/g, reqId).replace(/{{TITLE}}/g, `Implementation: ${title}`));
-
-          // 04-Status
-          const statusFile = path.join(statusDir, 'STATUS.md');
-          _updateStatus(projectDir, projectName, statusFile, reqDir, planDir, bugDir);
-
-          return `✅ 需求已处理:\n📋 Obsidian 文档已生成:\n- 需求: ${reqFile}\n- 计划: ${planFile} (待 writing-plans 填充)\n- 状态: ${statusFile}\n\n下一步: 复杂任务用 writing-plans 出计划，简单任务可直接编码。`;
-        }
-      },
-      'harness-update-status': {
-        description: '刷新 Obsidian 04-Status/STATUS.md，同步 01-Requirements/02-Plans/03-Bugs 的最新状态。用法: {project: "项目名"}',
-        parameters: { type: 'object', properties: { project: { type: 'string' } }, required: ['project'] },
-        execute: async (input) => {
-          if (!OBSIDIAN_VAULT) return 'Obsidian vault 未找到。';
-          const { project } = input;
-          const projectDir = path.join(OBSIDIAN_VAULT, project);
-          const reqDir = path.join(projectDir, '01-Requirements');
-          const planDir = path.join(projectDir, '02-Plans');
-          const bugDir = path.join(projectDir, '03-Bugs');
-          const statusFile = path.join(projectDir, '04-Status', 'STATUS.md');
-          if (!fs.existsSync(reqDir) && !fs.existsSync(planDir)) return `未找到项目 ${project} 的需求或计划目录。`;
-          _updateStatus(projectDir, project, statusFile, reqDir, planDir, bugDir);
-          return `✅ STATUS.md 已刷新: ${statusFile}`;
-        }
       }
     }
   };
 };
 
-// 更新 04-Status/STATUS.md
-function _updateStatus(projectDir, project, statusFile, reqDir, planDir, bugDir) {
-  const date = new Date().toISOString().split('T')[0];
-  const readRows = (dir, fields) => {
-    if (!fs.existsSync(dir)) return '| (无) | | |';
-    return fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => {
-      const c = fs.readFileSync(path.join(dir, f), 'utf-8');
-      const vals = fields.map(({ regex, fallback }) => (c.match(regex) || [])[1]?.trim() || fallback || f);
-      return `| ${vals.join(' | ')} |`;
-    }).join('\n') || '| (无) | | |';
-  };
 
-  const reqRows = readRows(reqDir, [
-    { regex: /^id:\s*(.+)$/m }, { regex: /^#\s*\S+:\s*(.+)$/m }, { regex: /^status:\s*(.+)$/m, fallback: 'pending' }
-  ]);
-  const planRows = readRows(planDir, [
-    { regex: /^id:\s*(.+)$/m }, { regex: /^#\s*\S+:\s*(.+)$/m },
-    { regex: /^requires:\s*(.+)$/m, fallback: '-' }, { regex: /^status:\s*(.+)$/m, fallback: 'pending' }
-  ]);
-  const bugRows = readRows(bugDir, [
-    { regex: /^id:\s*(.+)$/m }, { regex: /^#\s*\S+:\s*(.+)$/m },
-    { regex: /^severity:\s*(.+)$/m, fallback: 'medium' }, { regex: /^status:\s*(.+)$/m, fallback: 'open' }
-  ]);
-
-  const tpl = fs.readFileSync(path.join(OBSIDIAN_TEMPLATE_DIR, '04-Status/STATUS-TEMPLATE.md'), 'utf-8');
-  fs.writeFileSync(statusFile, tpl.replace(/{{PROJECT}}/g, project).replace(/{{DATE}}/g, date)
-    .replace(/{{REQUIREMENTS_TABLE}}/g, reqRows).replace(/{{PLANS_TABLE}}/g, planRows).replace(/{{BUGS_TABLE}}/g, bugRows));
-}
