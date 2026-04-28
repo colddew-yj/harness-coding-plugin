@@ -6,3 +6,4 @@ node_modules/
 memory/*.jsonl
 hindsight/hindsight*.log
 hindsight/server.pid
+TEST-REPORT.md
