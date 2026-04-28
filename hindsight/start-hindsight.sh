@@ -1,32 +1,31 @@
 #!/bin/bash
-# Start Hindsight server with DashScope config
+# Start Hindsight server
+# Required environment variables:
+#   OPENAI_API_KEY - Your LLM API key
+#   OPENAI_BASE_URL - API base URL (e.g., https://coding.dashscope.aliyuncs.com/v1)
+#   HINDSIGHT_MODEL - Model name (default: qwen3.6-plus)
 
-export OPENAI_API_KEY="sk-sp-3e0719b158cb442f9426c6b2f173c109"
-export OPENAI_BASE_URL="https://coding.dashscope.aliyuncs.com/v1"
+cd "$(dirname "$0")"
 
-echo "Starting Hindsight server..."
-echo "API: http://localhost:8888"
-echo "UI:  http://localhost:9999"
-echo ""
+nohup python3 -c "
+import os, sys, time
+from hindsight import HindsightServer
 
-python3 -c "
-import os
-from hindsight import HindsightServer, HindsightClient
-
-print('Initializing Hindsight server with DashScope...')
+print('Starting Hindsight on port 8888...')
 
 with HindsightServer(
     llm_provider='openai',
-    llm_model='qwen-plus',
+    llm_model=os.environ.get('HINDSIGHT_MODEL', 'qwen3.6-plus'),
     llm_api_key=os.environ['OPENAI_API_KEY'],
-    llm_base_url=os.environ['OPENAI_BASE_URL']
+    llm_base_url=os.environ['OPENAI_BASE_URL'],
+    port=8888
 ) as server:
     print(f'Hindsight running at {server.url}')
-    print('Press Ctrl+C to stop')
-    import time
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print('\\nStopping Hindsight...')
-"
+    with open('server.pid', 'w') as f:
+        f.write(str(os.getpid()))
+    while True:
+        time.sleep(1)
+" > hindsight.log 2>&1 &
+
+echo \$! > server.pid
+echo "Started PID \$(cat server.pid)"
