@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "patterns": [
+    {
+      "id": "business-logic-in-ui",
+      "description": "Business logic must not be placed in UI components",
+      "regex": "components/.*\\.(tsx|jsx)$",
+      "forbidden": ["fetch", "database", "business.*logic"]
+    },
+    {
+      "id": "direct-db-access-from-ui",
+      "description": "UI components must not access data layer directly",
+      "regex": "components/.*\\.(tsx|jsx)$",
+      "forbidden": ["import.*database", "import.*repository"]
+    },
+    {
+      "id": "monolithic-files",
+      "description": "Files should not exceed 500 lines",
+      "maxLines": 500
+    },
+    {
+      "id": "hardcoded-secrets",
+      "description": "Secrets must not be hardcoded in source files",
+      "forbidden": ["api_key.*=", "password.*=", "secret.*=", "token.*="]
+    }
+  ]
+}

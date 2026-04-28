@@ -1,0 +1,15 @@
+services:
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    pull_policy: always
+    ports:
+      - "8888:8888"
+      - "9999:9999"
+    environment:
+      - HINDSIGHT_API_LLM_API_KEY=${HINDSIGHT_LLM_API_KEY}
+      - HINDSIGHT_API_LLM_PROVIDER=${HINDSIGHT_LLM_PROVIDER:-openai}
+      - HINDSIGHT_API_LLM_BASE_URL=${HINDSIGHT_LLM_BASE_URL:-}
+      - HINDSIGHT_API_LLM_MODEL=${HINDSIGHT_LLM_MODEL:-gpt-5-mini}
+    volumes:
+      - $HOME/.hindsight-data:/home/hindsight/.pg0
+    restart: unless-stopped

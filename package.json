@@ -1,0 +1,19 @@
+{
+  "name": "harness-coding-plugin",
+  "version": "0.1.0",
+  "description": "Harness Engineering plugin for OpenCode - recursive self-optimization, independent evaluation, dynamic context management, and hallucination reduction",
+  "type": "module",
+  "main": ".opencode/plugins/harness.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "opencode",
+    "harness",
+    "ai-agent",
+    "self-optimization",
+    "evaluation"
+  ],
+  "author": "",
+  "license": "MIT"
+}

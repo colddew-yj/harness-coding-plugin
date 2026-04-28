@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "layer-dependency",
+      "description": "Layers must only depend on lower layers",
+      "layers": ["ui", "service", "data"],
+      "allowedDependencies": {
+        "ui": ["service"],
+        "service": ["data"],
+        "data": []
+      }
+    },
+    {
+      "id": "no-circular-deps",
+      "description": "No circular dependencies between modules"
+    },
+    {
+      "id": "single-responsibility",
+      "description": "Each module/file has a single responsibility"
+    },
+    {
+      "id": "test-co-location",
+      "description": "Test files must be co-located with source or in dedicated test directory"
+    }
+  ],
+  "forbiddenPaths": [
+    "node_modules/",
+    ".git/",
+    "memory/"
+  ]
+}
