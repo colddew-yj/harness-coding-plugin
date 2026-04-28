@@ -119,6 +119,16 @@ bash hindsight/start.sh
 open http://localhost:9999
 ```
 
+## 需求管理
+
+### Obsidian 需求知识库（可选）
+
+将 Obsidian 作为产品需求文档的管理工具，与 harness 工作流无缝集成。
+
+> **⚠️ 完全可选。** 不使用 Obsidian 不影响插件功能。
+
+启用后，AI 会自动在 `01-Requirements/`、`02-Plans/`、`03-Bugs/`、`04-Status/` 目录下生成需求文档，格式为 Obsidian 兼容的 Markdown。
+
 ## 安全脚本
 
 | 脚本 | 用途 |
