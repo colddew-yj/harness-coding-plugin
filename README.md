@@ -1,10 +1,19 @@
-# OpenCode Harness Plugin
+# harness-coding-plugin
 
-Harness Engineering 插件 — 为 opencode 提供确定性可靠性。
+Harness Engineering 插件 — 为 AI 编程工具提供确定性可靠性。
 
 ## 核心理念
 
 > **可靠性不来自"更聪明的模型"，而来自外部机制：拦截意图、校验结果、拒绝不合格、注入必要上下文。**
+
+## 兼容性
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| **OpenCode** | ✅ 已适配 | 完整支持所有 hooks、skills、agents、tools |
+| **Codex CLI** | 🚧 待适配 | 计划中 |
+| **Trae** | 🚧 待适配 | 计划中 |
+| **Cursor** | 🚧 待适配 | 计划中 |
 
 ## 安装
 
@@ -16,12 +25,24 @@ Harness Engineering 插件 — 为 opencode 提供确定性可靠性。
 {
   "plugin": [
     "superpowers@git+https://github.com/obra/superpowers.git",
-    "/Users/yidongwu/projects/harness-coding-plugin"
+    "/path/to/harness-coding-plugin"
   ]
 }
 ```
 
 重启 opencode 即可。
+
+### 推荐搭配
+
+配合以下工具一起使用，Spec Coding 效果更佳：
+
+- **[Karpathy Guidelines](https://github.com/karpathy)** — 强调验证优先、避免幻觉的编程原则
+- **[Superpowers](https://github.com/obra/superpowers)** — 提供 brainstorming、TDD、subagent dispatch 等工作流
+
+三者配合形成完整闭环：
+```
+Karpathy（验证原则） + Superpowers（工作流） + Harness（可靠性保障） = 理想的 Spec Coding 体验
+```
 
 ## 功能
 
@@ -73,11 +94,25 @@ Harness Engineering 插件 — 为 opencode 提供确定性可靠性。
 
 ### Hindsight（可选增强）
 
-提供语义检索、实体提取、自动反思。运行在 `localhost:8888` 时自动启用。
+提供语义检索、实体提取、自动反思。
+
+> **⚠️ 使用 Hindsight 前，请先在本地启动 Hindsight 服务。**
+> 插件仅在检测到 `localhost:8888` 有 Hindsight 服务运行时才会自动切换使用。
 
 ```bash
-# 启动 Hindsight
-docker start hindsight
+# 方式 1: Docker 启动
+docker run -d --name hindsight \
+  -p 8888:8888 -p 9999:9999 \
+  -e HINDSIGHT_API_LLM_API_KEY=your-api-key \
+  -e HINDSIGHT_API_LLM_PROVIDER=openai \
+  -e HINDSIGHT_API_LLM_BASE_URL=https://your-api-base-url \
+  -v $HOME/.hindsight-data:/home/hindsight/.pg0 \
+  ghcr.io/vectorize-io/hindsight:latest
+
+# 方式 2: Python 启动
+export OPENAI_API_KEY=your-api-key
+export OPENAI_BASE_URL=https://your-api-base-url
+bash hindsight/start.sh
 
 # 访问 UI
 open http://localhost:9999
@@ -98,7 +133,7 @@ open http://localhost:9999
 如果 opencode 无法启动：
 
 ```bash
-bash /Users/yidongwu/projects/harness-coding-plugin/scripts/disable-harness.sh
+bash /path/to/harness-coding-plugin/scripts/disable-harness.sh
 ```
 
 所有备份存储在 `~/.opencode/backups/`。
