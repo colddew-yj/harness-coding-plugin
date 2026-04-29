@@ -11,13 +11,13 @@ Harness Engineering Plugin — Bringing deterministic reliability to AI coding t
 | Platform | Status | Notes |
 |----------|--------|-------|
 | **OpenCode** | ✅ Supported | Full support for all hooks, skills, agents, tools |
+| **Trae** | ✅ Supported | Skills + User Rules + MCP, see `adapters/trae/` |
 | **Codex CLI** | 🚧 Planned | Coming soon |
-| **Trae** | 🚧 Planned | Coming soon |
 | **Cursor** | 🚧 Planned | Coming soon |
 
 ## Installation
 
-### Global Installation (Configure once, works across all projects)
+### OpenCode (Recommended)
 
 Edit `~/.opencode/opencode.json` and add the plugin path:
 
@@ -31,6 +31,16 @@ Edit `~/.opencode/opencode.json` and add the plugin path:
 ```
 
 Restart opencode and you're done.
+
+### Trae
+
+```bash
+bash scripts/install-trae.sh
+```
+
+The installer auto-detects Trae version (International / CN), installs skills, user rules, and MCP Server.
+
+See [`adapters/trae/README.md`](adapters/trae/README.md) for details.
 
 ### Recommended Stack
 
@@ -164,7 +174,9 @@ Memory Sedimentation → Extract lessons for future
 ## Directory Structure
 
 ```
-├── .opencode/plugins/harness.js    # Main plugin entry
+├── .opencode/plugins/harness.js    # Main plugin entry (OpenCode)
+├── adapters/                       # Platform adapters
+│   └── trae/                       # Trae adapter (Skills + Rules + MCP)
 ├── agents/                         # Agent definitions
 ├── skills/                         # 7 skill packages
 ├── memory/                         # JSONL memory storage

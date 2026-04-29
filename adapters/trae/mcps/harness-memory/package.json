@@ -1,0 +1,13 @@
+{
+  "name": "harness-memory-mcp",
+  "version": "0.1.0",
+  "description": "Harness Memory MCP Server for Trae",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

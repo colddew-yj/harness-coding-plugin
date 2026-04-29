@@ -11,13 +11,13 @@ Harness Engineering 插件 — 为 AI 编程工具提供确定性可靠性。
 | 平台 | 状态 | 说明 |
 |------|------|------|
 | **OpenCode** | ✅ 已适配 | 完整支持所有 hooks、skills、agents、tools |
+| **Trae** | ✅ 已适配 | Skills + User Rules + MCP，详见 `adapters/trae/` |
 | **Codex CLI** | 🚧 待适配 | 计划中 |
-| **Trae** | 🚧 待适配 | 计划中 |
 | **Cursor** | 🚧 待适配 | 计划中 |
 
 ## 安装
 
-### 全局安装（一次配置，所有项目生效）
+### OpenCode（推荐）
 
 编辑 `~/.opencode/opencode.json`，添加插件路径：
 
@@ -31,6 +31,16 @@ Harness Engineering 插件 — 为 AI 编程工具提供确定性可靠性。
 ```
 
 重启 opencode 即可。
+
+### Trae
+
+```bash
+bash scripts/install-trae.sh
+```
+
+安装脚本会自动检测 Trae 版本（国际版/国内版），安装 skills、user rules 和 MCP Server。
+
+详细说明见 [`adapters/trae/README.md`](adapters/trae/README.md)。
 
 ### 推荐搭配
 
@@ -165,7 +175,9 @@ bash /path/to/harness-coding-plugin/scripts/disable-harness.sh
 ## 目录结构
 
 ```
-├── .opencode/plugins/harness.js    # 主插件入口
+├── .opencode/plugins/harness.js    # 主插件入口（OpenCode）
+├── adapters/                       # 平台适配层
+│   └── trae/                       # Trae 适配（Skills + Rules + MCP）
 ├── agents/                         # Agent 定义
 ├── skills/                         # 7 个技能包
 ├── memory/                         # JSONL 记忆存储
